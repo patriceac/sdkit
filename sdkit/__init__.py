@@ -36,7 +36,14 @@ class Context(local):
         """
         self.vram_usage_level = "balanced"
 
-        self.test_diffusers = False
+        self.test_diffusers = True
+        self.enable_codeformer = False
+        """
+        Enable this to use CodeFormer.
+
+        By enabling CodeFormer, you agree to the CodeFormer license (including non-commercial use of CodeFormer):
+        https://github.com/sczhou/CodeFormer/blob/master/LICENSE
+        """
 
     # hacky approach, but we need to enforce full precision for some devices
     # we also need to force full precision for these devices (haven't implemented this yet):

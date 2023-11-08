@@ -16,6 +16,8 @@ from .image_utils import (
     img_to_base64_str,
     img_to_buffer,
     resize_img,
+    black_to_transparent,
+    get_image,
 )
 from .latent_utils import (
     get_image_latent_and_mask,
@@ -35,3 +37,9 @@ from .memory_utils import (
     record_tensor_name,
     take_memory_snapshot,
 )
+from .convert_model_utils import (
+    convert_pipeline_unet_to_onnx,
+    convert_pipeline_to_tensorrt,
+)
+from .device_utils import has_amd_gpu
+from .misc_utils import make_sd_context, get_nested_attr

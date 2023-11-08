@@ -3,7 +3,7 @@ import tempfile
 import traceback
 
 from sdkit import Context
-from sdkit.utils import load_tensor_file, log
+from sdkit.utils import load_tensor_file, log, get_nested_attr
 
 """
 The VAE model overwrites the state_dict of model.first_stage_model.
@@ -18,7 +18,7 @@ def load_model(context: Context, **kwargs):
 
     try:
         vae = load_tensor_file(vae_model_path)
-        vae = vae["state_dict"]
+        vae = vae["state_dict"] if "state_dict" in vae else vae
 
         if context.test_diffusers:
             from diffusers.pipelines.stable_diffusion.convert_from_ckpt import (
@@ -53,9 +53,10 @@ def load_model(context: Context, **kwargs):
 
         del vae_dict
         return {}  # we don't need to access this again
-    except:
+    except Exception as e:
         log.error(traceback.format_exc())
         log.error(f"Could not load VAE: {vae_model_path}")
+        raise e
 
 
 def move_model_to_cpu(context: Context):
@@ -75,7 +76,19 @@ def _set_vae(context: Context, vae: dict):
 
     if context.test_diffusers:
         m = model["default"]
-        m.vae.load_state_dict(vae, strict=False)
+
+        if hasattr(m.vae, "_hf_hook"):  # update the buffered weights directly
+            for k, v in vae.items():
+                mod_name, v_type = k.rsplit(".", 1)
+                try:
+                    mod = get_nested_attr(m.vae, mod_name)
+                except Exception as e:
+                    log.error(f"Couldn't get module: {k}")
+                    raise e
+
+                mod._hf_hook.weights_map[v_type].data = v.to("cpu")
+        else:
+            m.vae.load_state_dict(vae, strict=False)
     else:
         model.first_stage_model.load_state_dict(vae, strict=False)
 

@@ -1,14 +1,28 @@
 from sdkit import Context
 from sdkit.utils import base64_str_to_img, gc, log
 
-from . import gfpgan, nsfw_checker, realesrgan, codeformer
+import importlib
 
-filter_modules = {
-    "gfpgan": gfpgan,
-    "realesrgan": realesrgan,
-    "nsfw_checker": nsfw_checker,
-    "codeformer": codeformer
-}
+
+class Filter:
+    pass
+
+
+def _get_module(model_type):
+    modules = {  # filter_name -> local_module_name
+        "gfpgan": "gfpgan",
+        "realesrgan": "realesrgan",
+        "nsfw_checker": "nsfw_checker",
+        "codeformer": "codeformer",
+        "latent_upscaler": "latent_upscaler",
+    }
+    if model_type not in modules:
+        return
+
+    module_name = modules[model_type]
+    base_package = ".".join(__name__.split(".")[:-1])
+
+    return importlib.import_module("." + module_name, base_package)
 
 
 def apply_filters(context: Context, filters, images, **kwargs):
@@ -32,6 +46,20 @@ def apply_filter_single_image(context, filters, image, **kwargs):
         log.info(f"Applying {filter_type}...")
         gc(context)
 
-        image = filter_modules[filter_type].apply(context, image, **kwargs)
+        image = get_filter_module(filter_type).apply(context, image, **kwargs)
 
     return image
+
+
+def get_filter_module(filter_type):
+    module = _get_module(filter_type)
+    if module is None:  # use the default filter implementation
+
+        def default_apply(context: Context, image, **kwargs):
+            model = context.models[filter_type]
+            return model(image)
+
+        module = Filter()
+        module.apply = default_apply
+
+    return module
